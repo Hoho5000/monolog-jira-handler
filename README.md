@@ -1,13 +1,6 @@
 # JIRA Handler for Monolog
 
-[![Build Status](https://img.shields.io/travis/ARTACK/monolog-jira-handler.svg?style=flat)](https://travis-ci.org/ARTACK/monolog-jira-handler)
-[![Scrutinizer Quality Score](https://img.shields.io/scrutinizer/g/artack/monolog-jira-handler.svg?style=flat)](https://scrutinizer-ci.com/g/artack/monolog-jira-handler/)
-[![Scrutinizer Coverage](https://img.shields.io/scrutinizer/coverage/g/artack/monolog-jira-handler.svg)](https://scrutinizer-ci.com/g/artack/monolog-jira-handler/)
-[![Latest Release](https://img.shields.io/packagist/v/artack/monolog-jira-handler.svg)](https://packagist.org/packages/artack/monolog-jira-handler)
-[![MIT License](https://img.shields.io/packagist/l/artack/monolog-jira-handler.svg)](http://opensource.org/licenses/MIT)
-[![Total Downloads](https://img.shields.io/packagist/dt/artack/monolog-jira-handler.svg)](https://packagist.org/packages/artack/monolog-jira-handler)
-
-Developed by [ARTACK WebLab GmbH](https://www.artack.ch) in Zurich, Switzerland.
+[![Build Status](https://travis-ci.com/Hoho5000/monolog-jira-handler.svg?branch=master)](https://travis-ci.com/Hoho5000/monolog-jira-handler)
 
 ## Introduction
 This handler will write the logs to a JIRA instance. The handler will calculate a hash over the log-data except 
