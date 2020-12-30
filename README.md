@@ -49,7 +49,10 @@ $loger->error('something went wrong...');
 
 
 ## Handler configuration
-The JiraHandler has several constructor arguments:
+The JiraHandler has several constructor arguments.
+
+These are subject to a large amount of change going forward.
+
 - **`$hostname`**: The hostname of your JIRA instance without the protocol (https:// is enforced).
 - **`$username`**: The username under which the issues are created (and any other operation on the JIRA REST API is performed).
 - **`$password`**: The password to authenticate against your JIRA instance
@@ -59,6 +62,7 @@ The JiraHandler has several constructor arguments:
 - **`$issueTypeName`**: The issue type which the new issue will use while being created
 - **`$withComments`**: (default: `false`) Determines if subsequent same (same hash) log entries will be added as comments to the already created issue
 - **`$counterFieldName`**: (default: `null`) If set this is the name of the custom field containing the number of recorded log entries
+- **`$excludeHashDataKeys`**: (default: `[]`) An array of key values to always exclude from generating a hash value.
 - **`$httpClient`**: (default: `null`) The HTTP Client which is used to talk to the JIRA REST API. Any [HTTPlug client implementation](https://packagist.org/providers/php-http/client-implementation) is allowed. If not specified it will try to autodiscover a suitable client.
 
 ## License
