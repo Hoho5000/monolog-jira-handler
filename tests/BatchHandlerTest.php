@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Artack\Monolog\JiraHandler;
+namespace Hoho5000\Monolog\JiraHandler;
 
 use Monolog\Logger;
 
@@ -14,7 +14,7 @@ class BatchHandlerTest extends BaseTestCase
         $formatter->expects($this->once())
             ->method('formatBatch'); // Each record is formatted
 
-        $handler = $this->getMockForAbstractClass('Artack\\Monolog\\JiraHandler\\BatchHandler', [], '', true, true, true, ['send', 'write']);
+        $handler = $this->getMockForAbstractClass('Hoho5000\\Monolog\\JiraHandler\\BatchHandler', [], '', true, true, true, ['send', 'write']);
         $handler->expects($this->once())
             ->method('send');
         $handler->expects($this->never())
@@ -33,7 +33,7 @@ class BatchHandlerTest extends BaseTestCase
             $this->getRecord(Logger::INFO, 'information'),
         ];
 
-        $handler = $this->getMockForAbstractClass('Artack\\Monolog\\JiraHandler\\BatchHandler');
+        $handler = $this->getMockForAbstractClass('Hoho5000\\Monolog\\JiraHandler\\BatchHandler');
         $handler->expects($this->never())
             ->method('send');
         $handler->setLevel(Logger::ERROR);
@@ -43,7 +43,7 @@ class BatchHandlerTest extends BaseTestCase
 
     public function testHandle(): void
     {
-        $handler = $this->getMockForAbstractClass('Artack\\Monolog\\JiraHandler\\BatchHandler');
+        $handler = $this->getMockForAbstractClass('Hoho5000\\Monolog\\JiraHandler\\BatchHandler');
         $handler->setFormatter(new \Monolog\Formatter\LineFormatter());
 
         $record = $this->getRecord();

@@ -12,7 +12,7 @@ create a new issue with the content of the log entry.
 You can install it through [Composer](https://getcomposer.org):
 
 ```shell
-$ composer require artack/monolog-jira-handler
+$ composer require hoho5000/monolog-jira-handler
 ```
 
 ## Usage
@@ -47,56 +47,6 @@ $loger->info('I am somehow nice to know');
 $loger->error('something went wrong...');
 ```
 
-### In a Symfony project
-The use of this custom handler in a Symfony project is easy. First configure the JiraHandler as a service.
-```yaml
-# config/services.yaml
-
-services:
-    # ...
-
-    Artack\Monolog\JiraHandler\JiraHandler:
-        arguments:
-            - 'your.jira.host'
-            - 'username'
-            - 'password'
-            - 'project = MYAPP AND resolution = Unresolved'
-            - 'Loghash'
-            - 'MYAPP'
-            - 'Bug
-            - true
-            - 'Logcount'
-```
-
-Secondly register your configured service as a monolog handler.
-```yaml
-# config/packages/{dev|prod|...}/monolog.yaml
-
-monolog:
-    handlers:
-        main:
-            type: fingers_crossed
-            action_level: error
-            handler: grouped
-            excluded_404s:
-                # regex: exclude all 404 errors from the logs
-                - ^/
-        grouped:
-            type: group
-            members: [stream, buffer]
-        stream:
-            type: stream
-            path: "%kernel.logs_dir%/%kernel.environment%.log"
-            level: debug
-        buffer:
-            type: buffer
-            handler: jira
-        jira:
-            type: service
-            id: Artack\Monolog\JiraHandler\JiraHandler
-            
-        # more handlers as you wish ...
-```
 
 ## Handler configuration
 The JiraHandler has several constructor arguments:

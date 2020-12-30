@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Artack\Monolog\JiraHandler;
+namespace Hoho5000\Monolog\JiraHandler;
 
 use Http\Mock\Client;
 use Monolog\Logger;

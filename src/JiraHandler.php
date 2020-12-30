@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Artack\Monolog\JiraHandler;
+namespace Hoho5000\Monolog\JiraHandler;
 
 use Http\Client\Common\Plugin\AuthenticationPlugin;
 use Http\Client\Common\Plugin\ContentLengthPlugin;

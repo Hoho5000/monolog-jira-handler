@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Artack\Monolog\JiraHandler;
+namespace Hoho5000\Monolog\JiraHandler;
 
 use Monolog\Handler\AbstractProcessingHandler;
 
