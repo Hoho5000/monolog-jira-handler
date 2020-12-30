@@ -13,6 +13,9 @@ use Http\Discovery\HttpClientDiscovery;
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Message\Authentication\BasicAuth;
 use Monolog\Logger;
+use function array_walk_recursive;
+use function in_array;
+use function serialize;
 
 class JiraHandler extends BatchHandler
 {
@@ -31,7 +34,23 @@ class JiraHandler extends BatchHandler
 
     private $createdIssueId;
 
-    public function __construct(string $hostname, string $username, string $password, string $jql, string $hashFieldName, string $projectKey, string $issueTypeName, bool $withComments = false, string $counterFieldName = null, HttpClient $httpClient = null, $level = Logger::DEBUG, $bubble = true)
+    private $excludeHashData;
+
+    public function __construct(
+        string $hostname,
+        string $username,
+        string $password,
+        string $jql,
+        string $hashFieldName,
+        string $projectKey,
+        string $issueTypeName,
+        bool $withComments = false,
+        string $counterFieldName = null,
+        array $excludeHashDataKeys = [],
+        HttpClient $httpClient = null,
+        $level = Logger::DEBUG,
+        $bubble = true
+    )
     {
         parent::__construct($level, $bubble);
 
@@ -59,18 +78,19 @@ class JiraHandler extends BatchHandler
             $httpClient ?: HttpClientDiscovery::find(),
             [$authenticationPlugin, $headerDefaultsPlugin, $contentLengthPlugin]
         );
+
+        $this->excludeHashData = $excludeHashDataKeys;
     }
+
 
     protected function send($content, array $records): void
     {
         $countFieldId = null;
         $highestRecord = $this->getHighestRecord($records);
 
-        $recordForHash = $highestRecord;
-        unset($recordForHash['datetime'], $recordForHash['formatted'], $recordForHash['context']);
-        $hash = md5(serialize($recordForHash));
+        $hash = $this->generateHash($highestRecord);
 
-        $uri = $this->urlFactory->createUri(sprintf('https://%s/rest/api/2/customFields', $this->hostname));
+        $uri = $this->urlFactory->createUri(sprintf('https://%s/rest/api/2/field', $this->hostname));
         $request = $this->requestFactory->createRequest('GET', $uri);
         $response = $this->httpClient->sendRequest($request);
         $data = json_decode($response->getBody()->getContents(), true);
@@ -167,10 +187,12 @@ class JiraHandler extends BatchHandler
         $this->createdIssueId = $data['id'];
     }
 
+
     protected function parseProjectId(array $data): int
     {
         return (int) $data['projects'][0]['id'];
     }
+
 
     protected function parseIssueType(array $data, string $issueTypeName): array
     {
@@ -179,15 +201,67 @@ class JiraHandler extends BatchHandler
         }))[0];
     }
 
+
     protected function parseCustomFieldId(array $data, string $part, string $fieldName): string
     {
-        return array_values(array_filter($data[$part], function ($item) use ($fieldName) {
+        return array_values(array_filter($data, function ($item) use ($fieldName) {
             return $item['name'] === $fieldName;
         }))[0]['id'];
     }
 
+
     public function getCreatedIssueId()
     {
         return $this->createdIssueId;
+    }
+
+
+    /**
+     * Recursively removes keys from a provided array by using a callback.
+     *
+     * @param array $array The array to remove items from.
+     * @param callable $callback The callback to use to filter items to remove.
+     */
+    private function arrayWalkRecursiveRemove(
+        array $array,
+        callable $callback
+    ): array
+    {
+        foreach ($array as $k => $v)
+        {
+            if ($callback($v, $k))
+            {
+                unset($array[$k]);
+            }
+            elseif (is_array($v))
+            {
+                $array[$k] = $this->arrayWalkRecursiveRemove($v, $callback);
+            }
+        }
+        return $array;
+    }
+
+
+    /**
+     * Generates a hash from the provided data array.
+     *
+     * @param array $data The data to be used to generate a hash.
+     * @return string
+     */
+    private function generateHash(array $data): string
+    {
+        $hasData = $data;
+
+        // Convert exception data to an array for filtering
+        if (isset($hasData['context']['exception']))
+        {
+            $hasData['context']['exception'] = (array)$hasData['context']['exception'];
+        }
+
+        $hasData = $this->arrayWalkRecursiveRemove($hasData, function($value, $key) {
+            return in_array($key, $this->excludeHashData);
+        });
+
+        return md5(serialize($hasData));
     }
 }
