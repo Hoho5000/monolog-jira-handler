@@ -90,49 +90,37 @@ class JiraHandler extends BatchHandler
 
         $hash = $this->generateHash($highestRecord);
 
-        $uri = $this->urlFactory->createUri(sprintf('https://%s/rest/api/2/field', $this->hostname));
-        $request = $this->requestFactory->createRequest('GET', $uri);
-        $response = $this->httpClient->sendRequest($request);
-        $data = json_decode($response->getBody()->getContents(), true);
-        $hashFieldId = $this->parseCustomFieldId($data, 'values', $this->hashFieldName);
-
-        if ($this->counterFieldName) {
-            $countFieldId = $this->parseCustomFieldId($data, 'values', $this->counterFieldName);
-        }
-
-        $jql = sprintf('%s AND %s ~ \'%s\'', $this->jql, $this->hashFieldName, $hash);
+        $fieldData = $this->queryForJiraFields();
 
         $fields = [
             'issuetype',
             'status',
             'summary',
-            $hashFieldId,
             $this->counterFieldName,
         ];
 
-        if ($countFieldId) {
+        $hashFieldId = $this->parseCustomFieldId($fieldData, 'values', $this->hashFieldName);
+        $fields[] = $hashFieldId;
+
+        if ($this->counterFieldName)
+        {
+            $countFieldId = $this->parseCustomFieldId($fieldData, 'values', $this->counterFieldName);
             $fields[] = $countFieldId;
         }
 
-        $body = json_encode([
-            'jql' => $jql,
-            'fields' => $fields,
-        ]);
+        $searchResultsData = $this->queryForExistingJiraIssues($hash, $fields);
 
-        $uri = $this->urlFactory->createUri(sprintf('https://%s/rest/api/2/search', $this->hostname));
-        $request = $this->requestFactory->createRequest('POST', $uri)->withBody($this->streamFactory->createStream($body));
-        $response = $this->httpClient->sendRequest($request);
-        $data = json_decode($response->getBody()->getContents(), true);
+        if ($searchResultsData['total'] > 0)
+        {
+            $issueId = $searchResultsData['issues'][0]['id'];
 
-        if ($data['total'] > 0) {
-            $issueId = $data['issues'][0]['id'];
+            if ($this->counterFieldName)
+            {
+                $countFieldValue = $searchResultsData['issues'][0]['fields'][$countFieldId];
 
-            if ($this->counterFieldName) {
-                $countFieldValue = $data['issues'][0]['fields'][$countFieldId];
-
-                $uri = $this->urlFactory->createUri(sprintf('https://%s/rest/api/2/issue/%d', $this->hostname, $issueId).'?'.http_build_query([
-                    'notifyUsers' => false,
-                ]));
+                $uri = $this->urlFactory->createUri(sprintf('https://%s/rest/api/2/issue/%d', $this->hostname, $issueId) . '?' . http_build_query([
+                        'notifyUsers' => false,
+                    ]));
                 $rawBody = [
                     'fields' => [
                         $countFieldId => ++$countFieldValue,
@@ -143,7 +131,8 @@ class JiraHandler extends BatchHandler
                 $this->httpClient->sendRequest($request);
             }
 
-            if ($this->withComments) {
+            if ($this->withComments)
+            {
                 $uri = $this->urlFactory->createUri(sprintf('https://%s/rest/api/2/issue/%d/comment', $this->hostname, $issueId));
                 $body = json_encode([
                     'body' => $content,
@@ -155,10 +144,57 @@ class JiraHandler extends BatchHandler
             return;
         }
 
+        $this->createNewJiraIssue($content, $highestRecord, $hashFieldId, $hash, $countFieldId);
+    }
+
+
+    private function queryForJiraFields(): array
+    {
+        $uri = $this->urlFactory->createUri(sprintf('https://%s/rest/api/2/field', $this->hostname));
+        $request = $this->requestFactory->createRequest('GET', $uri);
+        $response = $this->httpClient->sendRequest($request);
+        return json_decode($response->getBody()->getContents(), true);
+    }
+
+
+    private function queryForExistingJiraIssues(string $hash, array $fields): array
+    {
+        $jql = sprintf('%s AND %s ~ \'%s\'', $this->jql, $this->hashFieldName, $hash);
+
+        $body = json_encode([
+            'jql' => $jql,
+            'fields' => $fields,
+        ]);
+
+        $uri = $this->urlFactory->createUri(sprintf('https://%s/rest/api/2/search', $this->hostname));
+        $request = $this->requestFactory->createRequest('POST', $uri)->withBody($this->streamFactory->createStream($body));
+        $response = $this->httpClient->sendRequest($request);
+        return json_decode($response->getBody()->getContents(), true);
+    }
+
+
+    /**
+     * Calls the Jira API to create a new Jira issue with the provided data.
+     *
+     * @param string $content
+     * @param array $record
+     * @param string $hashFieldId
+     * @param string $hash
+     * @param string $countFieldId
+     * @throws \Psr\Http\Client\ClientExceptionInterface
+     */
+    private function createNewJiraIssue(
+        string $content,
+        array $record,
+        string $hashFieldId,
+        string $hash,
+        string $countFieldId
+    ): void
+    {
         $uri = $this->urlFactory->createUri(sprintf('https://%s/rest/api/2/issue/createmeta', $this->hostname).'?'.http_build_query([
-            'projectKeys' => $this->projectKey,
-            'expand' => 'projects.issuetypes.fields',
-        ]));
+                'projectKeys' => $this->projectKey,
+                'expand' => 'projects.issuetypes.fields',
+            ]));
         $request = $this->requestFactory->createRequest('GET', $uri);
         $response = $this->httpClient->sendRequest($request);
         $data = json_decode($response->getBody()->getContents(), true);
@@ -166,7 +202,7 @@ class JiraHandler extends BatchHandler
         $projectId = $this->parseProjectId($data);
         $issueType = $this->parseIssueType($data, $this->issueTypeName);
         $issueTypeId = (int) $issueType['id'];
-        $summary = sprintf('%s: %s', $highestRecord['level_name'], $highestRecord['message']);
+        $summary = sprintf('%s', $record['message']);
 
         $body = json_encode([
             'fields' => [
@@ -175,7 +211,7 @@ class JiraHandler extends BatchHandler
                 ],
                 'issuetype' => ['id' => $issueTypeId],
                 'summary' => strlen($summary) > 255 ? substr($summary, 0, 252).'...' : $summary,
-                'description' => $content,
+                'description' => print_r($record, true),
                 $hashFieldId => $hash,
                 $countFieldId => 1,
             ],
